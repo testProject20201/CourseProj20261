@@ -1,0 +1,51 @@
+package com.mediscribeai.security;
+
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.security.Keys;
+import org.springframework.stereotype.Service;
+import java.security.Key;
+import java.util.Date;
+import java.util.function.Function;
+
+@Service
+public class JwtService {
+    // A secure 256-bit secret key string for demonstration
+    private static final String SECRET_KEY = "SECRET_KEY_MUST_BE_LONG_ENOUGH_FOR_HMAC_SHA_256_ALGORITHM_KEY";
+
+    private Key getSigningKey() {
+        return Keys.hmacShaKeyFor(SECRET_KEY.getBytes());
+    }
+
+    public String generateToken(String username) {
+        return Jwts.builder()
+                .setSubject(username)
+                .setIssuedAt(new Date(System.currentTimeMillis()))
+                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60)) // 1 hour expiration
+                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
+                .compact();
+    }
+
+    public String extractUsername(String token) {
+        return extractClaim(token, Claims::getSubject);
+    }
+
+    public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
+        final Claims claims = Jwts.parserBuilder()
+                .setSigningKey(getSigningKey())
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
+        return claimsResolver.apply(claims);
+    }
+
+    public boolean isTokenValid(String token, String username) {
+        final String extractedUsername = extractUsername(token);
+        return (extractedUsername.equals(username) && !iSTokenExpired(token));
+    }
+
+    private boolean iSTokenExpired(String token) {
+        return extractClaim(token, Claims::getExpiration).before(new Date());
+    }
+}
