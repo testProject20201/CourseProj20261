@@ -2,6 +2,8 @@
 FROM gradle:8.6-jdk21 AS build
 WORKDIR /app
 COPY "." "."
+# Add this line to grant execution permission to the Gradle wrapper:
+RUN chmod +x ./gradlew
 RUN ./gradlew bootJar -x test
 
 # Stage 2: Run the application with Java 21 Runtime
